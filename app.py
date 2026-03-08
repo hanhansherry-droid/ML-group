@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
 import smtplib
+import base64
 
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from email.mime.image import MIMEImage
 
 
 st.set_page_config(page_title="Fashion Sample Request Generator")
@@ -61,6 +61,19 @@ usage_context = st.text_area("Usage Context")
 
 
 # -----------------------------
+# Image → base64
+# -----------------------------
+def img_to_base64(path):
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+
+artist1 = img_to_base64("artist1.jpg")
+artist2 = img_to_base64("artist2.jpg")
+look = img_to_base64("Spring 2026 Couture.jpg")
+
+
+# -----------------------------
 # Generate Email
 # -----------------------------
 if st.button("Generate Email"):
@@ -80,8 +93,8 @@ if st.button("Generate Email"):
 
 <p>{artist_intro}</p>
 
-<img src="cid:artist1" width="250"><br><br>
-<img src="cid:artist2" width="250"><br><br>
+<img src="data:image/jpeg;base64,{artist1}" width="250"><br><br>
+<img src="data:image/jpeg;base64,{artist2}" width="250"><br><br>
 
 <p>{usage_context}</p>
 
@@ -93,7 +106,7 @@ Return date: January 28
 
 <p><b>Selected Sample</b></p>
 
-<img src="cid:look" width="300">
+<img src="data:image/jpeg;base64,{look}" width="300">
 
 <br><br>
 
@@ -113,34 +126,13 @@ def send_email(to_email, subject, html):
     sender = st.secrets["email"]["sender"]
     password = st.secrets["email"]["password"]
 
-    msg = MIMEMultipart("related")
+    msg = MIMEMultipart("alternative")
 
     msg["Subject"] = subject
     msg["From"] = sender
     msg["To"] = to_email
 
-    msg_alt = MIMEMultipart("alternative")
-    msg.attach(msg_alt)
-
-    msg_alt.attach(MIMEText(html, "html"))
-
-    # Artist image 1
-    with open("artist1.jpg", "rb") as f:
-        img = MIMEImage(f.read())
-        img.add_header("Content-ID", "<artist1>")
-        msg.attach(img)
-
-    # Artist image 2
-    with open("artist2.jpg", "rb") as f:
-        img = MIMEImage(f.read())
-        img.add_header("Content-ID", "<artist2>")
-        msg.attach(img)
-
-    # Look image
-    with open("Spring 2026 Couture.jpg", "rb") as f:
-        img = MIMEImage(f.read())
-        img.add_header("Content-ID", "<look>")
-        msg.attach(img)
+    msg.attach(MIMEText(html, "html"))
 
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
 
