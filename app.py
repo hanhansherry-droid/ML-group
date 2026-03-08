@@ -1,18 +1,89 @@
 import streamlit as st
 import pandas as pd
 import base64
+import os
 
-st.set_page_config(page_title="Fashion Sample Request Generator", layout="wide")
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+import google.auth.transport.requests
+
+
+# Gmail API scope
+SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
+
+st.set_page_config(page_title="Fashion Sample Request Generator")
 
 st.title("Fashion Sample Request Generator")
 
-# -----------------------------
-# 读取品牌联系人
-# -----------------------------
 
+# -----------------------------
+# Gmail Login
+# -----------------------------
+def gmail_login():
+
+    creds = None
+
+    if os.path.exists("token.json"):
+        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+
+    if not creds or not creds.valid:
+
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(google.auth.transport.requests.Request())
+
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                "credentials.json",
+                SCOPES
+            )
+
+            creds = flow.run_local_server(port=0)
+
+        with open("token.json", "w") as token:
+            token.write(creds.to_json())
+
+    service = build("gmail", "v1", credentials=creds)
+
+    return service
+
+
+# -----------------------------
+# Send Email
+# -----------------------------
+def send_email(service, to_email, subject, html):
+
+    message = MIMEMultipart("alternative")
+
+    message["to"] = to_email
+    message["subject"] = subject
+
+    part = MIMEText(html, "html")
+
+    message.attach(part)
+
+    raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
+
+    body = {
+        "raw": raw_message
+    }
+
+    service.users().messages().send(
+        userId="me",
+        body=body
+    ).execute()
+
+
+# -----------------------------
+# Load Brand Contacts
+# -----------------------------
 @st.cache_data
 def load_contacts():
     return pd.read_excel("brand_contacts.xlsx")
+
 
 contacts = load_contacts()
 
@@ -28,28 +99,26 @@ recipient_email = brand_info["email"]
 st.write("Contact:", recipient_name)
 st.write("Email:", recipient_email)
 
-# -----------------------------
-# Artist 固定信息
-# -----------------------------
 
+# -----------------------------
+# Artist Info
+# -----------------------------
 artist_name = "Sdanny Lee"
 
 artist_intro = """
-Sdanny Lee is a singer and performer known for her powerful stage presence and distinctive, modern aesthetic.
-She has collaborated with a range of fashion and luxury houses, including starring in a Miu Miu short film
-that was screened at the Venice Film Festival, as well as working with the Paris-based couture house
-Alexis Mabille for official public appearances.
+Sdanny Lee is a singer and performer known for her powerful stage presence and distinctive modern aesthetic.
+She has collaborated with multiple fashion houses including Miu Miu and Alexis Mabille.
 """
 
-# -----------------------------
-# 用户输入
-# -----------------------------
 
-st.header("Fill Styling Request Information")
+# -----------------------------
+# User Input
+# -----------------------------
+st.header("Styling Request Information")
 
 studio_name = st.text_input("Studio Name")
 
-event_name = st.text_input("Program / Event Name")
+event_name = st.text_input("Event Name")
 
 event_intro = st.text_area("Event Introduction")
 
@@ -66,22 +135,23 @@ with col2:
 with col3:
     return_date = st.text_input("Return Date")
 
-# -----------------------------
-# 图片转 base64
-# -----------------------------
 
+# -----------------------------
+# Image -> base64
+# -----------------------------
 def img_to_base64(path):
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode()
+
 
 artist1 = img_to_base64("artist1.jpg")
 artist2 = img_to_base64("artist2.jpg")
 outfit = img_to_base64("Spring 2026 Couture.jpg")
 
+
 # -----------------------------
 # Generate Email
 # -----------------------------
-
 if st.button("Generate Email"):
 
     email_html = f"""
@@ -91,7 +161,7 @@ if st.button("Generate Email"):
 
 <p>This is stylist Huna from <b>{studio_name}</b>. I’m also responsible for celebrity art direction for Cosmopolitan China.</p>
 
-<p>I’m reaching out regarding a sample request for <b>{artist_name}</b>, who will be participating in <b>{event_name}</b>.</p>
+<p>I’m reaching out regarding a sample request for <b>{artist_name}</b>, who will participate in <b>{event_name}</b>.</p>
 
 <p>{event_intro}</p>
 
@@ -103,8 +173,6 @@ if st.button("Generate Email"):
 <img src="data:image/jpeg;base64,{artist2}" width="250"><br><br>
 
 <p>{usage_context}</p>
-
-<p>Below are the samples I’ve selected. Could you kindly help check the availability and schedule?</p>
 
 <p>
 Fitting date: {fitting_date}<br>
@@ -118,7 +186,7 @@ Return date: {return_date}
 
 <br><br>
 
-<p>Thank you very much for your time and consideration. Please feel free to let me know if any additional information would be helpful.</p>
+<p>Thank you very much for your time and consideration.</p>
 
 <p>Kind regards,<br>
 Huna<br>
@@ -127,21 +195,25 @@ Huna<br>
 
     st.session_state.email_html = email_html
 
-# -----------------------------
-# 邮件展示
-# -----------------------------
 
+# -----------------------------
+# Display Email
+# -----------------------------
 if "email_html" in st.session_state:
 
     st.header("Generated Email")
 
     st.markdown(st.session_state.email_html, unsafe_allow_html=True)
 
-    copy_button = f"""
-    <button onclick='navigator.clipboard.writeText(`{st.session_state.email_html}`)'
-    style="padding:10px 20px;font-size:16px;">
-    Copy Email
-    </button>
-    """
+    if st.button("Send Email via Gmail"):
 
-    st.components.v1.html(copy_button, height=60)
+        service = gmail_login()
+
+        send_email(
+            service,
+            recipient_email,
+            f"Sample Request – {artist_name}",
+            st.session_state.email_html
+        )
+
+        st.success("Email sent successfully!")
