@@ -5,6 +5,7 @@ import base64
 
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.image import MIMEImage
 
 
 st.set_page_config(page_title="Fashion Sample Request Generator")
@@ -13,7 +14,7 @@ st.title("Fashion Sample Request Generator")
 
 
 # -----------------------------
-# Load Brand Contacts
+# Load contacts
 # -----------------------------
 @st.cache_data
 def load_contacts():
@@ -36,7 +37,7 @@ st.write("Email:", recipient_email)
 
 
 # -----------------------------
-# Artist Info
+# Artist info
 # -----------------------------
 artist_name = "Sdanny Lee"
 
@@ -61,23 +62,59 @@ usage_context = st.text_area("Usage Context")
 
 
 # -----------------------------
-# Image → base64
+# base64 for preview
 # -----------------------------
 def img_to_base64(path):
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode()
 
 
-artist1 = img_to_base64("artist1.jpg")
-artist2 = img_to_base64("artist2.jpg")
-look = img_to_base64("Spring 2026 Couture.jpg")
+artist1_b64 = img_to_base64("artist1.jpg")
+artist2_b64 = img_to_base64("artist2.jpg")
+look_b64 = img_to_base64("Spring 2026 Couture.jpg")
 
 
 # -----------------------------
-# Generate Email
+# Generate preview email
 # -----------------------------
 if st.button("Generate Email"):
 
+    preview_html = f"""
+<p>Dear {recipient_name},</p>
+
+<p>Hope you’re doing well!</p>
+
+<p>This is stylist Huna from <b>{studio_name}</b>. I’m also responsible for celebrity art direction for Cosmopolitan China.</p>
+
+<p>I’m reaching out regarding a sample request for <b>{artist_name}</b>, who will participate in <b>{event_name}</b>.</p>
+
+<p>{event_intro}</p>
+
+<p><b>Artist Introduction</b></p>
+
+<p>{artist_intro}</p>
+
+<img src="data:image/jpeg;base64,{artist1_b64}" width="250"><br><br>
+<img src="data:image/jpeg;base64,{artist2_b64}" width="250"><br><br>
+
+<p>{usage_context}</p>
+
+<p>
+Fitting date: January 24<br>
+Event date: January 27<br>
+Return date: January 28
+</p>
+
+<p><b>Selected Sample</b></p>
+
+<img src="data:image/jpeg;base64,{look_b64}" width="300">
+
+<p>Kind regards,<br>
+Huna<br>
+{studio_name}</p>
+"""
+
+    # email version (cid images)
     email_html = f"""
 <p>Dear {recipient_name},</p>
 
@@ -93,8 +130,8 @@ if st.button("Generate Email"):
 
 <p>{artist_intro}</p>
 
-<img src="data:image/jpeg;base64,{artist1}" width="250"><br><br>
-<img src="data:image/jpeg;base64,{artist2}" width="250"><br><br>
+<img src="cid:artist1" width="250"><br><br>
+<img src="cid:artist2" width="250"><br><br>
 
 <p>{usage_context}</p>
 
@@ -106,33 +143,51 @@ Return date: January 28
 
 <p><b>Selected Sample</b></p>
 
-<img src="data:image/jpeg;base64,{look}" width="300">
-
-<br><br>
+<img src="cid:look" width="300">
 
 <p>Kind regards,<br>
 Huna<br>
 {studio_name}</p>
 """
 
+    st.session_state.preview_html = preview_html
     st.session_state.email_html = email_html
 
 
 # -----------------------------
-# Send Email
+# Send email with CID images
 # -----------------------------
 def send_email(to_email, subject, html):
 
     sender = st.secrets["email"]["sender"]
     password = st.secrets["email"]["password"]
 
-    msg = MIMEMultipart("alternative")
+    msg = MIMEMultipart("related")
 
     msg["Subject"] = subject
     msg["From"] = sender
     msg["To"] = to_email
 
-    msg.attach(MIMEText(html, "html"))
+    msg_alt = MIMEMultipart("alternative")
+    msg.attach(msg_alt)
+
+    msg_alt.attach(MIMEText(html, "html"))
+
+    # attach images
+    with open("artist1.jpg", "rb") as f:
+        img = MIMEImage(f.read())
+        img.add_header("Content-ID", "<artist1>")
+        msg.attach(img)
+
+    with open("artist2.jpg", "rb") as f:
+        img = MIMEImage(f.read())
+        img.add_header("Content-ID", "<artist2>")
+        msg.attach(img)
+
+    with open("Spring 2026 Couture.jpg", "rb") as f:
+        img = MIMEImage(f.read())
+        img.add_header("Content-ID", "<look>")
+        msg.attach(img)
 
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
 
@@ -146,13 +201,13 @@ def send_email(to_email, subject, html):
 
 
 # -----------------------------
-# Display Email
+# Display preview
 # -----------------------------
-if "email_html" in st.session_state:
+if "preview_html" in st.session_state:
 
     st.header("Generated Email")
 
-    st.markdown(st.session_state.email_html, unsafe_allow_html=True)
+    st.markdown(st.session_state.preview_html, unsafe_allow_html=True)
 
     if st.button("Send Email"):
 
