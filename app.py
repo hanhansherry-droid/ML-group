@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import base64
-import os
+import json
 
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -9,10 +9,8 @@ from email.mime.multipart import MIMEMultipart
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-import google.auth.transport.requests
 
 
-# Gmail API scope
 SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
 
 st.set_page_config(page_title="Fashion Sample Request Generator")
@@ -21,30 +19,25 @@ st.title("Fashion Sample Request Generator")
 
 
 # -----------------------------
-# Gmail Login
+# Gmail Login (using Streamlit Secrets)
 # -----------------------------
 def gmail_login():
 
-    creds = None
+    credentials_config = {
+        "installed": {
+            "client_id": st.secrets["google"]["client_id"],
+            "client_secret": st.secrets["google"]["client_secret"],
+            "auth_uri": st.secrets["google"]["auth_uri"],
+            "token_uri": st.secrets["google"]["token_uri"],
+        }
+    }
 
-    if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+    flow = InstalledAppFlow.from_client_config(
+        credentials_config,
+        SCOPES
+    )
 
-    if not creds or not creds.valid:
-
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(google.auth.transport.requests.Request())
-
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                "credentials.json",
-                SCOPES
-            )
-
-            creds = flow.run_local_server(port=0)
-
-        with open("token.json", "w") as token:
-            token.write(creds.to_json())
+    creds = flow.run_local_server(port=0)
 
     service = build("gmail", "v1", credentials=creds)
 
@@ -67,9 +60,7 @@ def send_email(service, to_email, subject, html):
 
     raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
 
-    body = {
-        "raw": raw_message
-    }
+    body = {"raw": raw_message}
 
     service.users().messages().send(
         userId="me",
@@ -106,34 +97,25 @@ st.write("Email:", recipient_email)
 artist_name = "Sdanny Lee"
 
 artist_intro = """
-Sdanny Lee is a singer and performer known for her powerful stage presence and distinctive modern aesthetic.
-She has collaborated with multiple fashion houses including Miu Miu and Alexis Mabille.
+Sdanny Lee is a singer and performer known for her powerful stage presence and distinctive, modern aesthetic.
+She has collaborated with a range of fashion and luxury houses, including starring in a Miu Miu short film
+that was screened at the Venice Film Festival, as well as working with the Paris-based couture house
+Alexis Mabille for official public appearances.
 """
 
 
 # -----------------------------
-# User Input
+# User Inputs
 # -----------------------------
 st.header("Styling Request Information")
 
 studio_name = st.text_input("Studio Name")
 
-event_name = st.text_input("Event Name")
+event_name = st.text_input("Program / Event Name")
 
 event_intro = st.text_area("Event Introduction")
 
 usage_context = st.text_area("Usage Context")
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    fitting_date = st.text_input("Fitting Date")
-
-with col2:
-    event_date = st.text_input("Event Date")
-
-with col3:
-    return_date = st.text_input("Return Date")
 
 
 # -----------------------------
@@ -161,7 +143,7 @@ if st.button("Generate Email"):
 
 <p>This is stylist Huna from <b>{studio_name}</b>. I’m also responsible for celebrity art direction for Cosmopolitan China.</p>
 
-<p>I’m reaching out regarding a sample request for <b>{artist_name}</b>, who will participate in <b>{event_name}</b>.</p>
+<p>I’m reaching out regarding a sample request for <b>{artist_name}</b>, who will be participating in <b>{event_name}</b>.</p>
 
 <p>{event_intro}</p>
 
@@ -175,9 +157,9 @@ if st.button("Generate Email"):
 <p>{usage_context}</p>
 
 <p>
-Fitting date: {fitting_date}<br>
-Event date: {event_date}<br>
-Return date: {return_date}
+Fitting date: January 24<br>
+Event date: January 27<br>
+Return date: January 28
 </p>
 
 <p><b>Selected Sample</b></p>
@@ -186,7 +168,7 @@ Return date: {return_date}
 
 <br><br>
 
-<p>Thank you very much for your time and consideration.</p>
+<p>Thank you very much for your time and consideration. Please feel free to let me know if any additional information would be helpful.</p>
 
 <p>Kind regards,<br>
 Huna<br>
