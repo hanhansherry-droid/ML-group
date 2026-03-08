@@ -1,11 +1,6 @@
 import streamlit as st
 import pandas as pd
-
-# -----------------------------
-# 页面设置
-# -----------------------------
-
-st.set_page_config(layout="wide")
+import base64
 
 st.title("Fashion Sample Request Generator")
 
@@ -22,8 +17,12 @@ brand_info = contacts[contacts["brand"] == selected_brand].iloc[0]
 recipient_name = brand_info["contact_name"]
 recipient_email = brand_info["email"]
 
+st.write("Brand:", selected_brand)
+st.write("Contact:", recipient_name)
+st.write("Email:", recipient_email)
+
 # -----------------------------
-# Artist information
+# Artist 固定信息
 # -----------------------------
 
 artist_name = "Sdanny Lee"
@@ -35,92 +34,111 @@ that was screened at the Venice Film Festival, as well as working with the Paris
 Alexis Mabille for official public appearances.
 """
 
-artist_images = ["artist1.jpg", "artist2.jpg"]
-
 # -----------------------------
-# Outfit image
+# 用户输入
 # -----------------------------
 
-outfit_image = "Spring 2026 Couture.jpg"
+st.header("Fill Styling Request Information")
+
+studio_name = st.text_input("Studio Name")
+
+event_name = st.text_input("Program / Event Name")
+
+event_intro = st.text_area("Event Introduction")
+
+usage_context = st.text_area("Usage Context")
+
+fitting_date = st.text_input("Fitting Date")
+
+event_date = st.text_input("Event Date")
+
+return_date = st.text_input("Return Date")
 
 # -----------------------------
-# 页面布局
+# 图片转 base64
 # -----------------------------
 
-left, right = st.columns(2)
+def img_to_base64(path):
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+artist1 = img_to_base64("artist1.jpg")
+artist2 = img_to_base64("artist2.jpg")
+outfit = img_to_base64("Spring 2026 Couture.jpg")
 
 # -----------------------------
-# 左侧：展示信息
+# Generate Email
 # -----------------------------
 
-with left:
+if st.button("Generate Email"):
 
-    st.header("Brand Contact")
+    email_html = f"""
+    <p>Dear {recipient_name},</p>
 
-    st.write("Brand:", selected_brand)
-    st.write("Contact:", recipient_name)
-    st.write("Email:", recipient_email)
+    <p>Hope you’re doing well!</p>
 
-    st.header("Artist")
+    <p>This is stylist Huna from <b>{studio_name}</b>. I’m also responsible for celebrity art direction for Cosmopolitan China.</p>
 
-    st.subheader(artist_name)
+    <p>I’m reaching out regarding a sample request for <b>{artist_name}</b>, who will be participating in <b>{event_name}</b>.</p>
 
-    st.write(artist_intro)
+    <p>{event_intro}</p>
 
-    st.image(artist_images)
+    <p><b>Artist Introduction</b></p>
 
-    st.header("Selected Outfit")
+    <p>{artist_intro}</p>
 
-    st.image(outfit_image)
+    <!-- 艺人图片紧跟介绍 -->
+
+    <img src="data:image/jpeg;base64,{artist1}" width="250"><br><br>
+    <img src="data:image/jpeg;base64,{artist2}" width="250"><br><br>
+
+    <p>{usage_context}</p>
+
+    <p>Below are the samples I’ve selected. Could you kindly help check the availability and schedule?</p>
+
+    <p>
+    Fitting date: {fitting_date}<br>
+    Event date: {event_date}<br>
+    Return date: {return_date}
+    </p>
+
+    <p><b>Selected Sample</b></p>
+
+    <!-- 衣服图片最后 -->
+
+    <img src="data:image/jpeg;base64,{outfit}" width="300">
+
+    <br><br>
+
+    <p>Thank you very much for your time and consideration. Please feel free to let me know if any additional information would be helpful.</p>
+
+    <p>Kind regards,<br>
+    Huna<br>
+    {studio_name}</p>
+    """
+
+    st.session_state.email_html = email_html
 
 # -----------------------------
-# 右侧：邮件生成
+# 邮件展示
 # -----------------------------
 
-with right:
+if "email_html" in st.session_state:
 
-    st.header("Email Information")
+    st.header("Generated Email")
 
-    studio_name = st.text_input("Studio Name")
+    st.markdown(st.session_state.email_html, unsafe_allow_html=True)
 
-    event_intro = st.text_area("Event Introduction")
+    copy_button = f"""
+    <button onclick="navigator.clipboard.writeText(`{st.session_state.email_html}`)">
+    Copy Email
+    </button>
+    """
 
-    event_date = st.text_input("Event Date")
-
-    if st.button("Generate Email"):
-
-        email_body = f"""
-Dear {recipient_name},
-
-This is stylist Huna from {studio_name}.
-
-I’m reaching out regarding a sample request for {artist_name}.
-
-Event Introduction
-{event_intro}
-
-Artist Introduction
-
-{artist_intro}
-
-Artist Images
-artist1.jpg
-artist2.jpg
-
-Event Date
-{event_date}
-
-Selected Sample
-
-Spring 2026 Couture.jpg
-
-Thank you very much for your time and consideration.
-
-Kind regards
-Huna
-"""
+    st.components.v1.html(copy_button)
 
         st.subheader("Generated Email")
 
         st.code(email_body)
+
 
