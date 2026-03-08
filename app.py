@@ -2,14 +2,12 @@ import streamlit as st
 import pandas as pd
 
 # -----------------------------
-# 页面标题
+# 页面设置
 # -----------------------------
 
-st.title("Fashion Sample Request Generator")
+st.set_page_config(layout="wide")
 
-st.caption(
-"Automatically generate a styling sample request email for fashion PR."
-)
+st.title("Fashion Sample Request Generator")
 
 # -----------------------------
 # 读取品牌联系人
@@ -25,7 +23,7 @@ recipient_name = brand_info["contact_name"]
 recipient_email = brand_info["email"]
 
 # -----------------------------
-# 艺人信息
+# Artist information
 # -----------------------------
 
 artist_name = "Sdanny Lee"
@@ -37,115 +35,92 @@ that was screened at the Venice Film Festival, as well as working with the Paris
 Alexis Mabille for official public appearances.
 """
 
-artist_image = "artist.jpg"
+artist_images = ["artist1.jpg", "artist2.jpg"]
 
 # -----------------------------
-# 服装信息
+# Outfit image
 # -----------------------------
-
-outfit_name = "Spring 2026 Couture"
-
-outfit_description = """
-Spring 2026 Couture is a sculptural couture look by Germanier featuring intricate beadwork,
-bold silhouette, and dramatic stage presence. The design embodies a futuristic aesthetic
-while maintaining the craftsmanship and artistry of haute couture.
-"""
 
 outfit_image = "Spring 2026 Couture.jpg"
 
 # -----------------------------
-# 活动信息
+# 页面布局
 # -----------------------------
 
-event_intro = """
-Sdanny Lee will be performing at an upcoming live concert in China.
-The event is a large-scale live performance with strong visual exposure
-and professional stage production.
-"""
-
-fitting_date = "February 4"
-performance_date = "February 7"
-return_date = "February 8"
+left, right = st.columns(2)
 
 # -----------------------------
-# 页面展示
+# 左侧：展示信息
 # -----------------------------
 
-st.header("Brand Contact")
+with left:
 
-st.write("Brand:", selected_brand)
-st.write("Contact:", recipient_name)
-st.write("Email:", recipient_email)
+    st.header("Brand Contact")
 
-# -----------------------------
-# 艺人展示
-# -----------------------------
+    st.write("Brand:", selected_brand)
+    st.write("Contact:", recipient_name)
+    st.write("Email:", recipient_email)
 
-st.header("Artist")
+    st.header("Artist")
 
-st.image(artist_image, caption=artist_name)
+    st.subheader(artist_name)
 
-st.write(artist_intro)
+    st.write(artist_intro)
 
-# -----------------------------
-# 服装展示
-# -----------------------------
+    st.image(artist_images)
 
-st.header("Selected Outfit")
+    st.header("Selected Outfit")
 
-st.image(outfit_image, caption=outfit_name)
-
-st.write(outfit_description)
+    st.image(outfit_image)
 
 # -----------------------------
-# 邮件生成
+# 右侧：邮件生成
 # -----------------------------
 
-def generate_email():
+with right:
 
-    email_body = f"""
+    st.header("Email Information")
+
+    studio_name = st.text_input("Studio Name")
+
+    event_intro = st.text_area("Event Introduction")
+
+    event_date = st.text_input("Event Date")
+
+    if st.button("Generate Email"):
+
+        email_body = f"""
 Dear {recipient_name},
 
-This is stylist Huna from THEICON Studio. I’m also responsible for celebrity art direction for Cosmopolitan China.
+This is stylist Huna from {studio_name}.
 
-I’m reaching out regarding a sample request for {artist_name}, who will be performing at an upcoming live concert in China.
+I’m reaching out regarding a sample request for {artist_name}.
 
+Event Introduction
 {event_intro}
 
 Artist Introduction
 
 {artist_intro}
 
-Selected Look
+Artist Images
+artist1.jpg
+artist2.jpg
 
-{outfit_name}
+Event Date
+{event_date}
 
-{outfit_description}
+Selected Sample
 
-Fitting date: {fitting_date}
-Usage / Performance date: {performance_date}
-Return date: {return_date}
-
-For this project, we have selected a couture look that we believe would work beautifully on stage.
+Spring 2026 Couture.jpg
 
 Thank you very much for your time and consideration.
 
-Kind regards,
+Kind regards
 Huna
-THEICON Studio
 """
 
-    return email_body
+        st.subheader("Generated Email")
 
+        st.code(email_body)
 
-# -----------------------------
-# 按钮生成邮件
-# -----------------------------
-
-if st.button("Generate Email"):
-
-    email_text = generate_email()
-
-    st.subheader("Generated Email")
-
-    st.code(email_text)
