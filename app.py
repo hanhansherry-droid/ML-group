@@ -1,68 +1,132 @@
 import streamlit as st
-import smtplib
-from email.mime.text import MIMEText
+import pandas as pd
 
+# -----------------------------
+# 页面标题
+# -----------------------------
 
-st.title("Styling Sample Request Generator")
+st.title("Fashion Sample Request Generator")
 
+st.caption(
+"Automatically generate a styling sample request email for fashion PR."
+)
 
-# -------------------------
+# -----------------------------
+# 读取品牌联系人
+# -----------------------------
+
+contacts = pd.read_excel("brand_contacts.xlsx")
+
+selected_brand = "Germanier"
+
+brand_info = contacts[contacts["brand"] == selected_brand].iloc[0]
+
+recipient_name = brand_info["contact_name"]
+recipient_email = brand_info["email"]
+
+# -----------------------------
+# 艺人信息
+# -----------------------------
+
+artist_name = "Sdanny Lee"
+
+artist_intro = """
+Sdanny Lee is a singer and performer known for her powerful stage presence and distinctive, modern aesthetic.
+She has collaborated with a range of fashion and luxury houses, including starring in a Miu Miu short film
+that was screened at the Venice Film Festival, as well as working with the Paris-based couture house
+Alexis Mabille for official public appearances.
+"""
+
+artist_image = "artist.jpg"
+
+# -----------------------------
+# 服装信息
+# -----------------------------
+
+outfit_name = "Spring 2026 Couture"
+
+outfit_description = """
+Spring 2026 Couture is a sculptural couture look by Germanier featuring intricate beadwork,
+bold silhouette, and dramatic stage presence. The design embodies a futuristic aesthetic
+while maintaining the craftsmanship and artistry of haute couture.
+"""
+
+outfit_image = "Spring 2026 Couture.jpg"
+
+# -----------------------------
+# 活动信息
+# -----------------------------
+
+event_intro = """
+Sdanny Lee will be performing at an upcoming live concert in China.
+The event is a large-scale live performance with strong visual exposure
+and professional stage production.
+"""
+
+fitting_date = "February 4"
+performance_date = "February 7"
+return_date = "February 8"
+
+# -----------------------------
+# 页面展示
+# -----------------------------
+
+st.header("Brand Contact")
+
+st.write("Brand:", selected_brand)
+st.write("Contact:", recipient_name)
+st.write("Email:", recipient_email)
+
+# -----------------------------
+# 艺人展示
+# -----------------------------
+
+st.header("Artist")
+
+st.image(artist_image, caption=artist_name)
+
+st.write(artist_intro)
+
+# -----------------------------
+# 服装展示
+# -----------------------------
+
+st.header("Selected Outfit")
+
+st.image(outfit_image, caption=outfit_name)
+
+st.write(outfit_description)
+
+# -----------------------------
 # 邮件生成
-# -------------------------
+# -----------------------------
 
-def generate_email(
-    recipient_name,
-    recipient_email,
-    artist_name,
-    artist_intro,
-    artist_image_url,
-    event_intro,
-    fitting_date,
-    performance_date,
-    return_date,
-    sample_images
-):
+def generate_email():
 
-    subject = f"Sample Request – {artist_name}"
-
-    body = f"""
+    email_body = f"""
 Dear {recipient_name},
 
 This is stylist Huna from THEICON Studio. I’m also responsible for celebrity art direction for Cosmopolitan China.
 
-I’m reaching out regarding a sample request for {artist_name}.
+I’m reaching out regarding a sample request for {artist_name}, who will be performing at an upcoming live concert in China.
 
 {event_intro}
-
---------------------------------------------
 
 Artist Introduction
 
 {artist_intro}
 
-Artist Image
-{artist_image_url}
+Selected Look
 
---------------------------------------------
+{outfit_name}
 
-Sample Request Information
+{outfit_description}
 
 Fitting date: {fitting_date}
 Usage / Performance date: {performance_date}
 Return date: {return_date}
 
---------------------------------------------
-
-Requested Samples
-"""
-
-    for img in sample_images:
-        if img.strip():
-            body += f"\nSample Image: {img}"
-
-    body += """
-
---------------------------------------------
+For this project, we have selected a couture look that we believe would work beautifully on stage.
 
 Thank you very much for your time and consideration.
 
@@ -71,129 +135,17 @@ Huna
 THEICON Studio
 """
 
-    return subject, body
+    return email_body
 
 
-# -------------------------
-# 邮件发送
-# -------------------------
-
-def send_email(sender_email, password, receiver, subject, body):
-
-    msg = MIMEText(body)
-
-    msg["Subject"] = subject
-    msg["From"] = sender_email
-    msg["To"] = receiver
-
-    server = smtplib.SMTP("smtp.gmail.com", 587)
-    server.starttls()
-    server.login(sender_email, password)
-    server.sendmail(sender_email, receiver, msg.as_string())
-    server.quit()
-
-
-# -------------------------
-# 输入区域
-# -------------------------
-
-st.header("Recipient Information")
-
-recipient_name = st.text_input("Recipient Name")
-recipient_email = st.text_input("Recipient Email")
-
-
-st.header("Artist Information")
-
-artist_name = st.text_input("Artist Name")
-
-artist_intro = st.text_area("Artist Introduction")
-
-artist_image_url = st.text_input(
-    "Artist Image URL (from backend)"
-)
-
-if artist_image_url:
-    st.image(artist_image_url, caption="Artist Image")
-
-
-st.header("Event Information")
-
-event_intro = st.text_area("Event Introduction")
-
-fitting_date = st.text_input("Fitting Date")
-performance_date = st.text_input("Performance Date")
-return_date = st.text_input("Return Date")
-
-
-st.header("Sample Images")
-
-sample_images = st.text_area(
-    "Sample Image URLs (one per line)"
-)
-
-sample_images = sample_images.split("\n")
-
-for img in sample_images:
-    if img.strip():
-        st.image(img)
-
-
-# -------------------------
-# 生成邮件
-# -------------------------
+# -----------------------------
+# 按钮生成邮件
+# -----------------------------
 
 if st.button("Generate Email"):
 
-    subject, body = generate_email(
-        recipient_name,
-        recipient_email,
-        artist_name,
-        artist_intro,
-        artist_image_url,
-        event_intro,
-        fitting_date,
-        performance_date,
-        return_date,
-        sample_images
-    )
+    email_text = generate_email()
 
     st.subheader("Generated Email")
 
-    st.code(body)
-
-
-# -------------------------
-# 发送邮件
-# -------------------------
-
-st.header("Send Email")
-
-sender_email = st.text_input("Sender Gmail")
-password = st.text_input("App Password", type="password")
-
-if st.button("Send Email"):
-
-    subject, body = generate_email(
-        recipient_name,
-        recipient_email,
-        artist_name,
-        artist_intro,
-        artist_image_url,
-        event_intro,
-        fitting_date,
-        performance_date,
-        return_date,
-        sample_images
-    )
-
-    send_email(
-        sender_email,
-        password,
-        recipient_email,
-        subject,
-        body
-    )
-
-
-    st.success("Email Sent Successfully!")
+    st.code(email_text)
