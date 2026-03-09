@@ -2,18 +2,11 @@ import streamlit as st
 import pandas as pd
 import smtplib
 import base64
+import requests
 
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
-
-from openai import OpenAI
-
-
-# -----------------------------
-# OpenAI
-# -----------------------------
-client = OpenAI(api_key=st.secrets["openai"]["api_key"])
 
 
 # -----------------------------
@@ -73,9 +66,15 @@ usage_context = st.text_area("Usage Context")
 
 
 # -----------------------------
-# AI Email Generator
+# HuggingFace AI Email Generator
 # -----------------------------
 def generate_email():
+
+    API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
+
+    headers = {
+        "Authorization": f"Bearer {st.secrets['huggingface']['api_key']}"
+    }
 
     prompt = f"""
 Write a professional fashion sample request email.
@@ -101,16 +100,23 @@ Usage context:
 Tone: professional luxury fashion PR communication.
 """
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a professional celebrity stylist assistant."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.7
-    )
+    payload = {
+        "inputs": prompt,
+        "parameters": {
+            "max_new_tokens": 350,
+            "temperature": 0.7
+        }
+    }
 
-    return response.choices[0].message.content
+    response = requests.post(API_URL, headers=headers, json=payload)
+
+    result = response.json()
+
+    # HuggingFace sometimes returns loading message
+    if isinstance(result, dict) and "error" in result:
+        return "Model is loading, please try again in a few seconds."
+
+    return result[0]["generated_text"]
 
 
 # -----------------------------
@@ -131,7 +137,9 @@ look_b64 = img_to_base64("Spring 2026 Couture.jpg")
 # -----------------------------
 if st.button("Generate Email"):
 
-    ai_email = generate_email()
+    with st.spinner("AI is writing the email..."):
+
+        ai_email = generate_email()
 
     ai_email_html = ai_email.replace("\n", "<br>")
 
