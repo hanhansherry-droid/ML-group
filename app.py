@@ -1,17 +1,14 @@
+
 import streamlit as st
 import pandas as pd
 import smtplib
 import base64
-import requests
 
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 
 
-# -----------------------------
-# Page setup
-# -----------------------------
 st.set_page_config(page_title="Fashion Sample Request Generator")
 
 st.title("Fashion Sample Request Generator")
@@ -66,60 +63,6 @@ usage_context = st.text_area("Usage Context")
 
 
 # -----------------------------
-# HuggingFace AI Email Generator
-# -----------------------------
-def generate_email():
-
-    API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
-
-    headers = {
-        "Authorization": f"Bearer {st.secrets['huggingface']['api_key']}"
-    }
-
-    prompt = f"""
-Write a professional fashion sample request email.
-
-Recipient: {recipient_name}
-
-Studio: {studio_name}
-
-Artist: {artist_name}
-
-Artist introduction:
-{artist_intro}
-
-Event name:
-{event_name}
-
-Event introduction:
-{event_intro}
-
-Usage context:
-{usage_context}
-
-Tone: professional luxury fashion PR communication.
-"""
-
-    payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 350,
-            "temperature": 0.7
-        }
-    }
-
-    response = requests.post(API_URL, headers=headers, json=payload)
-
-    result = response.json()
-
-    # HuggingFace sometimes returns loading message
-    if isinstance(result, dict) and "error" in result:
-        return "Model is loading, please try again in a few seconds."
-
-    return result[0]["generated_text"]
-
-
-# -----------------------------
 # base64 for preview
 # -----------------------------
 def img_to_base64(path):
@@ -137,32 +80,75 @@ look_b64 = img_to_base64("Spring 2026 Couture.jpg")
 # -----------------------------
 if st.button("Generate Email"):
 
-    with st.spinner("AI is writing the email..."):
-
-        ai_email = generate_email()
-
-    ai_email_html = ai_email.replace("\n", "<br>")
-
     preview_html = f"""
-<p>{ai_email_html}</p>
+<p>Dear {recipient_name},</p>
+
+<p>Hope you’re doing well!</p>
+
+<p>This is stylist Huna from <b>{studio_name}</b>. I’m also responsible for celebrity art direction for Cosmopolitan China.</p>
+
+<p>I’m reaching out regarding a sample request for <b>{artist_name}</b>, who will participate in <b>{event_name}</b>.</p>
+
+<p>{event_intro}</p>
+
+<p><b>Artist Introduction</b></p>
+
+<p>{artist_intro}</p>
 
 <img src="data:image/jpeg;base64,{artist1_b64}" width="250"><br><br>
 <img src="data:image/jpeg;base64,{artist2_b64}" width="250"><br><br>
 
+<p>{usage_context}</p>
+
+<p>
+Fitting date: January 24<br>
+Event date: January 27<br>
+Return date: January 28
+</p>
+
 <p><b>Selected Sample</b></p>
 
 <img src="data:image/jpeg;base64,{look_b64}" width="300">
+
+<p>Kind regards,<br>
+Huna<br>
+{studio_name}</p>
 """
 
+    # email version (cid images)
     email_html = f"""
-<p>{ai_email_html}</p>
+<p>Dear {recipient_name},</p>
+
+<p>Hope you’re doing well!</p>
+
+<p>This is stylist Huna from <b>{studio_name}</b>. I’m also responsible for celebrity art direction for Cosmopolitan China.</p>
+
+<p>I’m reaching out regarding a sample request for <b>{artist_name}</b>, who will participate in <b>{event_name}</b>.</p>
+
+<p>{event_intro}</p>
+
+<p><b>Artist Introduction</b></p>
+
+<p>{artist_intro}</p>
 
 <img src="cid:artist1" width="250"><br><br>
 <img src="cid:artist2" width="250"><br><br>
 
+<p>{usage_context}</p>
+
+<p>
+Fitting date: January 24<br>
+Event date: January 27<br>
+Return date: January 28
+</p>
+
 <p><b>Selected Sample</b></p>
 
 <img src="cid:look" width="300">
+
+<p>Kind regards,<br>
+Huna<br>
+{studio_name}</p>
 """
 
     st.session_state.preview_html = preview_html
@@ -170,7 +156,7 @@ if st.button("Generate Email"):
 
 
 # -----------------------------
-# Send email
+# Send email with CID images
 # -----------------------------
 def send_email(to_email, subject, html):
 
